@@ -12,7 +12,7 @@ class ConvBlock(nn.Module):
 
     def forward(self, input_tensor):
         x = self.conv1(input_tensor)
-        x = self.bn1(x)
+        # x = self.bn1(x)
         return x
 
 
@@ -26,10 +26,10 @@ class ResBlock(nn.Module):
                                      stride=(2 if down_sample else 1, 1), padding=(1, 0))
         self.conv_block2 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=(1, 3),
                                      stride=(1, 2 if down_sample else 1), padding=(0, 1))
-        self.conv_block3 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=(3, 1), stride=1,
-                                     padding=(1, 0))
-        self.conv_block4 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=(1, 3), stride=1,
-                                     padding=(0, 1))
+        self.conv_block3 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=(3, 1),
+                                     stride=1, padding=(1, 0))
+        self.conv_block4 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=(1, 3),
+                                     stride=1, padding=(0, 1))
 
         if self.down_sample:
             self.shortcut = ConvBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=2)
@@ -64,31 +64,31 @@ class ResNet50NB1D(nn.Module):
         self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.conv2_x = nn.Sequential(
-            ResBlock(in_channels=64, out_channels=256, first=True),
-            ResBlock(in_channels=256, out_channels=256),
-            ResBlock(in_channels=256, out_channels=256)
+            ResBlock(in_channels=64, out_channels=64),
+            ResBlock(in_channels=64, out_channels=64),
+            ResBlock(in_channels=64, out_channels=64)
         )
         self.conv3_x = nn.Sequential(
-            ResBlock(in_channels=256, out_channels=512, down_sample=True),
-            ResBlock(in_channels=512, out_channels=512),
-            ResBlock(in_channels=512, out_channels=512),
-            ResBlock(in_channels=512, out_channels=512),
+            ResBlock(in_channels=64, out_channels=128, down_sample=True),
+            ResBlock(in_channels=128, out_channels=128),
+            ResBlock(in_channels=128, out_channels=128),
+            ResBlock(in_channels=128, out_channels=128),
         )
         self.conv4_x = nn.Sequential(
-            ResBlock(in_channels=512, out_channels=1024, down_sample=True),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
+            ResBlock(in_channels=128, out_channels=256, down_sample=True),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
         )
         self.conv5_x = nn.Sequential(
-            ResBlock(in_channels=1024, out_channels=2048, down_sample=True),
-            ResBlock(in_channels=2048, out_channels=2048),
-            ResBlock(in_channels=2048, out_channels=2048)
+            ResBlock(in_channels=256, out_channels=512, down_sample=True),
+            ResBlock(in_channels=512, out_channels=512),
+            ResBlock(in_channels=512, out_channels=512)
         )
         self.avg = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(2048, num_classes)
+        self.fc = nn.Linear(512, num_classes)
 
     def forward(self, input_tensor):
         x = self.conv1(input_tensor)
@@ -104,7 +104,3 @@ class ResNet50NB1D(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
-
-
-if __name__ == '__main__':
-    model = ResNet50NB1D()
