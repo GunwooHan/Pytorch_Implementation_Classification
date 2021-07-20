@@ -10,11 +10,15 @@ from torch.optim import lr_scheduler
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+import wandb
 
 from models import ResNet50NB1D
 
+wandb.init(project='NB1D test', entity='gunwoohan')
+
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
+    wandb.watch(model)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -63,6 +67,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             epoch_acc = running_corrects.double() / dataset_sizes[phase]
 
             print(f'epoch {epoch+1} {phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+            if phase == 'val':
+                wandb.log({'loss': epoch_loss, 'Acc':epoch_acc})
 
             # 모델을 깊은 복사(deep copy)함
             if phase == 'val' and epoch_acc > best_acc:
@@ -81,6 +87,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model
 
 if __name__ == '__main__':
+
     data_transforms = {
         'train': transforms.Compose([
             transforms.RandomResizedCrop(224),
@@ -99,7 +106,7 @@ if __name__ == '__main__':
     data_dir = 'datasets/hymenoptera_data'
     # image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
     image_datasets = {x: datasets.CIFAR10(root = 'datasets', train = True if x == 'train' else False, download = True, transform = data_transforms[x]) for x in ['train', 'val']}
-    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=64, shuffle=True, num_workers=4) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=256, shuffle=True, num_workers=16) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_names = image_datasets['train'].classes
 
