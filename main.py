@@ -12,9 +12,10 @@ import torchvision
 from torchvision import datasets, models, transforms
 import wandb
 
-from models import ResNet50NB1D
+from models import ResNet50NB1D, ResNet34, ResNet50, VGG11, VGG11LRN, VGG16C1, VGG13
 
-wandb.init(project='NB1D test', entity='gunwoohan')
+wandb.init(project='sweep_test', entity='gunwoohan', name='VGG13')
+
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
@@ -60,7 +61,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 # 통계
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-            if phase == 'train':
+            if phase == 'train' and scheduler:
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
@@ -86,48 +87,37 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     model.load_state_dict(best_model_wts)
     return model
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     data_transforms = {
         'train': transforms.Compose([
-            transforms.RandomResizedCrop(224),
+            transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ]),
         'val': transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ]),
     }
 
-    data_dir = 'datasets/hymenoptera_data'
+    # data_dir = 'datasets/hymenoptera_data'
     # image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
-    image_datasets = {x: datasets.CIFAR10(root = 'datasets', train = True if x == 'train' else False, download = True, transform = data_transforms[x]) for x in ['train', 'val']}
+    image_datasets = {x: datasets.CIFAR10(root = 'datasets', train=True if x == 'train' else False, download = True, transform = data_transforms[x]) for x in ['train', 'val']}
     dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=256, shuffle=True, num_workers=16) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_names = image_datasets['train'].classes
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model_ft = ResNet50NB1D(color_channel=3, num_classes=10)
-    # model_ft = models.resnet18(pretrained=True)
-    # num_ftrs = model_ft.fc.in_features
-    # 여기서 각 출력 샘플의 크기는 2로 설정합니다.
-    # 또는, nn.Linear(num_ftrs, len (class_names))로 일반화할 수 있습니다.
-    # model_ft.fc = nn.Linear(num_ftrs, 2)
-
+    model_ft = VGG13(in_channels=3, num_classes=10)
     model_ft = model_ft.to(device)
 
     criterion = nn.CrossEntropyLoss()
+    # optimizer_ft = optim.Adam(model_ft.parameters(), lr=1e-4, weight_decay=5e-4)
+    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    cosine_scheduler = lr_scheduler.CosineAnnealingLR(optimizer_ft,T_max=200)
 
-    # 모든 매개변수들이 최적화되었는지 관찰
-    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
+    # exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-    # 7 에폭마다 0.1씩 학습률 감소
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
-
-    model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                           num_epochs=50)
+    model_ft = train_model(model_ft, criterion, optimizer_ft, cosine_scheduler, num_epochs=200)

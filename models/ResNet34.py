@@ -24,12 +24,13 @@ class ResBlock(nn.Module):
         self.down_sample = down_sample
         self.first = first
 
-        self.conv_block1 = ConvBlock(in_channels=in_channels, out_channels=out_channels // 4, kernel_size=1, down_sample=down_sample)
-        self.conv_block2 = ConvBlock(in_channels=out_channels // 4, out_channels=out_channels // 4, kernel_size=3)
-        self.conv_block3 = ConvBlock(in_channels=out_channels // 4, out_channels=out_channels, kernel_size=1)
+        self.conv_block1 = ConvBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=3,
+                                     down_sample=down_sample)
+        self.conv_block2 = ConvBlock(in_channels=out_channels, out_channels=out_channels, kernel_size=3)
 
         if self.down_sample:
-            self.shortcut = ConvBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=1, down_sample=True)
+            self.shortcut = ConvBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=1,
+                                      down_sample=True)
         elif self.first:
             self.shortcut = ConvBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
 
@@ -37,8 +38,6 @@ class ResBlock(nn.Module):
         x = self.conv_block1(input_tensor)
         x = F.relu(x)
         x = self.conv_block2(x)
-        x = F.relu(x)
-        x = self.conv_block3(x)
 
         if self.down_sample:
             input_tensor = self.shortcut(input_tensor)
@@ -50,40 +49,40 @@ class ResBlock(nn.Module):
         return x
 
 
-class ResNet50(nn.Module):
+class ResNet34(nn.Module):
     def __init__(self, in_channels=3, num_classes=10):
-        super(ResNet50, self).__init__()
+        super(ResNet34, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=7, stride=2, padding=3)
         self.bn1 = nn.BatchNorm2d(64)
         self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.conv2_x = nn.Sequential(
-            ResBlock(in_channels=64, out_channels=256, first=True),
-            ResBlock(in_channels=256, out_channels=256),
-            ResBlock(in_channels=256, out_channels=256)
+            ResBlock(in_channels=64, out_channels=64),
+            ResBlock(in_channels=64, out_channels=64),
+            ResBlock(in_channels=64, out_channels=64)
         )
         self.conv3_x = nn.Sequential(
-            ResBlock(in_channels=256, out_channels=512, down_sample=True),
-            ResBlock(in_channels=512, out_channels=512),
-            ResBlock(in_channels=512, out_channels=512),
-            ResBlock(in_channels=512, out_channels=512),
+            ResBlock(in_channels=64, out_channels=128, down_sample=True),
+            ResBlock(in_channels=128, out_channels=128),
+            ResBlock(in_channels=128, out_channels=128),
+            ResBlock(in_channels=128, out_channels=128),
         )
         self.conv4_x = nn.Sequential(
-            ResBlock(in_channels=512, out_channels=1024, down_sample=True),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
-            ResBlock(in_channels=1024, out_channels=1024),
+            ResBlock(in_channels=128, out_channels=256, down_sample=True),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
+            ResBlock(in_channels=256, out_channels=256),
         )
         self.conv5_x = nn.Sequential(
-            ResBlock(in_channels=1024, out_channels=2048, down_sample=True),
-            ResBlock(in_channels=2048, out_channels=2048),
-            ResBlock(in_channels=2048, out_channels=2048)
+            ResBlock(in_channels=256, out_channels=512, down_sample=True),
+            ResBlock(in_channels=512, out_channels=512),
+            ResBlock(in_channels=512, out_channels=512)
         )
         self.avg = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(2048, num_classes)
+        self.fc = nn.Linear(512, num_classes)
 
     def forward(self, input_tensor):
         x = self.conv1(input_tensor)
